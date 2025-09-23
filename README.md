@@ -66,7 +66,7 @@ Clone the repository and build:
 ```bash
 git clone https://github.com/rudykwerewolf/netfence.git
 cd netfence
-make build
+go build -o netfence ./cmd/netfence
 ```
 
 For a static build (via musl):
