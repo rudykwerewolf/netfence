@@ -23,8 +23,8 @@
 
 * **NAT and Port Forwarding**
 
-  * Manage SNAT/DNAT and MASQUERADE rules.
-  * Automatic FORWARD acceptance for DNAT rules.
+  * Manage SNAT/DNAT and MASQUERADE rules. (NOT REALIZED)
+  * Automatic FORWARD acceptance for DNAT rules. (NOT REALIZED)
 
 * **Persistence**
 
