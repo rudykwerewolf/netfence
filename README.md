@@ -64,7 +64,7 @@ Optional:
 Clone the repository and build:
 
 ```bash
-git clone [https://github.com/yourname/netfence.git](https://github.com/rudykwerewolf/netfence.git)
+git clone https://github.com/rudykwerewolf/netfence.git
 cd netfence
 make build
 ```
