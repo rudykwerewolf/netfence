@@ -1,6 +1,6 @@
 # NetFence
 
-**NetFence** is a TUI-based firewall and NAT manager for Linux, built on top of **nftables**. It provides a user-friendly interface similar to `nmtui` and also comes with CLI utilities for scripting and automation.
+**NetFence** is a TUI-based firewall for Linux, built on top of **nftables**. It provides a user-friendly interface similar to `nmtui` and also comes with CLI utilities for scripting and automation.
 
 ---
 
