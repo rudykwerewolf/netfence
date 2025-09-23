@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"example.com/netfence/internal/model"
+	"netfence/internal/model"
 )
 
 // Render собирает ruleset в правильный синтаксис nftables

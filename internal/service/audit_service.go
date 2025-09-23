@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"example.com/netfence/internal/repo"
+	"netfence/internal/repo"
 )
 
 type AuditService struct{ Repo repo.AuditRepo }

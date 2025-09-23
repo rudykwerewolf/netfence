@@ -7,9 +7,9 @@ import (
 	"net"
 	"strings"
 
-	"example.com/netfence/internal/model"
-	"example.com/netfence/internal/repo"
-	"example.com/netfence/internal/util"
+	"netfence/internal/model"
+	"netfence/internal/repo"
+	"netfence/internal/util"
 )
 
 type RulesService struct {

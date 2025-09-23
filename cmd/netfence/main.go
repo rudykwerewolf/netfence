@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	dbpkg "example.com/netfence/internal/db"
-	"example.com/netfence/internal/model"
-	"example.com/netfence/internal/render"
-	"example.com/netfence/internal/repo"
-	"example.com/netfence/internal/service"
-	"example.com/netfence/internal/tui"
-	"example.com/netfence/internal/util"
+	dbpkg "netfence/internal/db"
+	"netfence/internal/model"
+	"netfence/internal/render"
+	"netfence/internal/repo"
+	"netfence/internal/service"
+	"netfence/internal/tui"
+	"netfence/internal/util"
 
 	"github.com/spf13/cobra"
 	_ "modernc.org/sqlite"
@@ -35,7 +35,6 @@ func openDB(path string) (*sql.DB, error) {
 func ensureDB(path string) error {
 	// ":memory:" и явные DSN-строки не трогаем файлово
 	if path == ":memory:" || strings.HasPrefix(path, "file:") {
-		// но миграции всё равно нужны
 		db, err := openDB(path)
 		if err != nil {
 			return err
@@ -47,10 +46,10 @@ func ensureDB(path string) error {
 			return err
 		}
 		// users bootstrap
-		if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users(actor TEXT PRIMARY KEY, role TEXT)`); err != nil {
+		if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users(name TEXT PRIMARY KEY, role TEXT)`); err != nil {
 			return err
 		}
-		if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO users(actor, role) VALUES('root','admin'),('operator','operator')`); err != nil {
+		if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO users(name, role) VALUES('root','admin'),('operator','operator')`); err != nil {
 			return err
 		}
 		return nil
@@ -82,10 +81,10 @@ func ensureDB(path string) error {
 		return err
 	}
 	// bootstrap users (на случай, если миграции этого не делают)
-	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users(actor TEXT PRIMARY KEY, role TEXT)`); err != nil {
+	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users(name TEXT PRIMARY KEY, role TEXT)`); err != nil {
 		return err
 	}
-	if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO users(actor, role) VALUES('root','admin'),('operator','operator')`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO users(name, role) VALUES('root','admin'),('operator','operator')`); err != nil {
 		return err
 	}
 	return nil
@@ -97,7 +96,7 @@ func main() {
 
 	root := &cobra.Command{
 		Use:   "netfence",
-		Short: "netfence - firewall/NFT управлялка с SQLite и TUI",
+		Short: "netfence - firewall/NFT manager with SQLite and TUI",
 	}
 
 	root.PersistentFlags().StringVar(&dbPath, "db", defaultDB, "path to firewall sqlite db")
@@ -109,15 +108,23 @@ func main() {
 		Use:   "list",
 		Short: "List firewall rules",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			conn, err := openDB(dbPath)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 			rs, err := repo.RuleRepo{DB: conn}.List(ctx, onlyEnabled)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			printRulesTable(rs)
 			return nil
 		},
@@ -129,15 +136,23 @@ func main() {
 		Use:   "defaults",
 		Short: "Show default policies",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			conn, err := openDB(dbPath)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 			def, err := repo.DefaultsRepo{DB: conn}.Get(ctx)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			printDefaultsTable(def)
 			return nil
 		},
@@ -149,18 +164,33 @@ func main() {
 		Use:   "set-defaults",
 		Short: "Set default policies",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
-			lock, err := util.Acquire(lockFile); if err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
+			lock, err := util.Acquire(lockFile)
+			if err != nil {
+				return err
+			}
 			defer lock.Release()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
-			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor); if err != nil { return err }
-			if role != "admin" { return fmt.Errorf("rbac: need admin, got %s", role) }
+			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor)
+			if err != nil {
+				return err
+			}
+			if role != "admin" {
+				return fmt.Errorf("rbac: need admin, got %s", role)
+			}
 
 			ds := service.DefaultsService{Repo: repo.DefaultsRepo{DB: conn}}
 			if err := ds.Set(ctx, model.Defaults{
@@ -168,7 +198,9 @@ func main() {
 				ForwardPolicy: fwdpol,
 				OutputPolicy:  outpol,
 				LogPrefix:     logpref,
-			}); err != nil { return err }
+			}); err != nil {
+				return err
+			}
 
 			_ = service.AuditService{Repo: repo.AuditRepo{DB: conn}}.Log(ctx, actor, "set_defaults", "defaults:1",
 				map[string]string{"input": inpol, "forward": fwdpol, "output": outpol, "log": logpref})
@@ -188,24 +220,41 @@ func main() {
 		Use:   "add-rule",
 		Short: "Create a rule",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
-			lock, err := util.Acquire(lockFile); if err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
+			lock, err := util.Acquire(lockFile)
+			if err != nil {
+				return err
+			}
 			defer lock.Release()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
-			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor); if err != nil { return err }
-			if role != "admin" && role != "operator" { return fmt.Errorf("rbac: need operator or admin, got %s", role) }
+			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor)
+			if err != nil {
+				return err
+			}
+			if role != "admin" && role != "operator" {
+				return fmt.Errorf("rbac: need operator or admin, got %s", role)
+			}
 
 			var prts []int
 			if ports != "" {
 				for _, p := range strings.Split(ports, ",") {
 					var v int
-					if _, e := fmt.Sscan(strings.TrimSpace(p), &v); e != nil { return e }
+					if _, e := fmt.Sscan(strings.TrimSpace(p), &v); e != nil {
+						return e
+					}
 					prts = append(prts, v)
 				}
 			}
@@ -214,15 +263,23 @@ func main() {
 				Ports:    prts, Enabled: enabled,
 				SrcCIDRs: splitCSV(srcs), DstCIDRs: splitCSV(dsts),
 			}
-			if inif != "" { r.InIf = &inif }
-			if outif != "" { r.OutIf = &outif }
-			if comment != "" { r.Comment = &comment }
+			if inif != "" {
+				r.InIf = &inif
+			}
+			if outif != "" {
+				r.OutIf = &outif
+			}
+			if comment != "" {
+				r.Comment = &comment
+			}
 
 			rr := repo.RuleRepo{DB: conn}
 			as := service.AuditService{Repo: repo.AuditRepo{DB: conn}}
 			svc := service.RulesService{Repo: rr, Audit: as}
 			id, err := svc.Add(ctx, actor, r)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			fmt.Printf("created id=%d\n", id)
 			return nil
 		},
@@ -244,20 +301,36 @@ func main() {
 		Short: "Delete rule by ID",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
-			lock, err := util.Acquire(lockFile); if err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
+			lock, err := util.Acquire(lockFile)
+			if err != nil {
+				return err
+			}
 			defer lock.Release()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
-			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor); if err != nil { return err }
-			if role != "admin" && role != "operator" { return fmt.Errorf("rbac: need operator or admin, got %s", role) }
+			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor)
+			if err != nil {
+				return err
+			}
+			if role != "admin" && role != "operator" {
+				return fmt.Errorf("rbac: need operator or admin, got %s", role)
+			}
 
-			var id int64; _, _ = fmt.Sscan(args[0], &id)
+			var id int64
+			_, _ = fmt.Sscan(args[0], &id)
 			svc := service.RulesService{Repo: repo.RuleRepo{DB: conn}, Audit: service.AuditService{Repo: repo.AuditRepo{DB: conn}}}
 			return svc.Delete(ctx, actor, id)
 		},
@@ -269,12 +342,19 @@ func main() {
 		Use:   "export",
 		Short: "Export snapshot to YAML",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
 			def, _ := repo.DefaultsRepo{DB: conn}.Get(ctx)
 			rules, _ := repo.RuleRepo{DB: conn}.List(ctx, false)
@@ -291,36 +371,65 @@ func main() {
 		Use:   "import",
 		Short: "Import snapshot from YAML",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
-			lock, err := util.Acquire(lockFile); if err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
+			lock, err := util.Acquire(lockFile)
+			if err != nil {
+				return err
+			}
 			defer lock.Release()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
-			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor); if err != nil { return err }
-			if role != "admin" { return fmt.Errorf("rbac: need admin") }
+			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor)
+			if err != nil {
+				return err
+			}
+			if role != "admin" {
+				return fmt.Errorf("rbac: need admin")
+			}
 
 			var snap struct {
 				Defaults model.Defaults `yaml:"defaults"`
 				Rules    []model.Rule   `yaml:"rules"`
 			}
-			if err := util.ReadYAML(path, &snap); err != nil { return err }
+			if err := util.ReadYAML(path, &snap); err != nil {
+				return err
+			}
 
-			tx, err := conn.BeginTx(ctx, nil); if err != nil { return err }
-			if _, err := tx.Exec(`DELETE FROM rules`); err != nil { _ = tx.Rollback(); return err }
+			tx, err := conn.BeginTx(ctx, nil)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(`DELETE FROM rules`); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
 			if _, err := tx.Exec(`UPDATE defaults SET input_policy=?,forward_policy=?,output_policy=?,log_prefix=? WHERE id=1`,
 				snap.Defaults.InputPolicy, snap.Defaults.ForwardPolicy, snap.Defaults.OutputPolicy, snap.Defaults.LogPrefix); err != nil {
-				_ = tx.Rollback(); return err
+				_ = tx.Rollback()
+				return err
 			}
 			rr := repo.RuleRepo{DB: conn}
 			for i := range snap.Rules {
-				if _, err := rr.Create(ctx, &snap.Rules[i]); err != nil { _ = tx.Rollback(); return err }
+				if _, err := rr.Create(ctx, &snap.Rules[i]); err != nil {
+					_ = tx.Rollback()
+					return err
+				}
 			}
-			if err := tx.Commit(); err != nil { return err }
+			if err := tx.Commit(); err != nil {
+				return err
+			}
 			_ = service.AuditService{Repo: repo.AuditRepo{DB: conn}}.Log(ctx, actor, "import_yaml", "snapshot", map[string]any{"count": len(snap.Rules)})
 			fmt.Println("imported")
 			return nil
@@ -333,12 +442,19 @@ func main() {
 		Use:   "dryrun",
 		Short: "Preview ruleset (tables)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
 			def, _ := repo.DefaultsRepo{DB: conn}.Get(ctx)
 			rules, _ := repo.RuleRepo{DB: conn}.List(ctx, true)
@@ -354,18 +470,33 @@ func main() {
 		Use:   "apply",
 		Short: "Apply rules to nftables",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
-			lock, err := util.Acquire(lockFile); if err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
+			lock, err := util.Acquire(lockFile)
+			if err != nil {
+				return err
+			}
 			defer lock.Release()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancel()
-			conn, err := openDB(dbPath); if err != nil { return err }
+			conn, err := openDB(dbPath)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			if err := dbpkg.ApplyAll(ctx, conn); err != nil { return err }
+			if err := dbpkg.ApplyAll(ctx, conn); err != nil {
+				return err
+			}
 
-			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor); if err != nil { return err }
-			if role != "admin" && role != "operator" { return fmt.Errorf("rbac: need operator or admin, got %s", role) }
+			role, err := repo.UserRepo{DB: conn}.RoleOf(ctx, actor)
+			if err != nil {
+				return err
+			}
+			if role != "admin" && role != "operator" {
+				return fmt.Errorf("rbac: need operator or admin, got %s", role)
+			}
 
 			def, _ := repo.DefaultsRepo{DB: conn}.Get(ctx)
 			rules, _ := repo.RuleRepo{DB: conn}.List(ctx, true)
@@ -385,7 +516,9 @@ func main() {
 		Use:   "tui",
 		Short: "Interactive terminal UI",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := ensureDB(dbPath); err != nil { return err }
+			if err := ensureDB(dbPath); err != nil {
+				return err
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			return tui.Run(ctx, dbPath, actor)
@@ -436,11 +569,19 @@ func printRulesTable(rs []model.Rule) {
 	fmt.Println("ID  CHAIN    PROTO  ACTION  EN  IN_IF     OUT_IF    PORTS        SRC               DST               ICMP     COMMENT")
 	for _, x := range rs {
 		inIf, outIf, comment := "-", "-", "-"
-		if x.InIf != nil && *x.InIf != "" { inIf = *x.InIf }
-		if x.OutIf != nil && *x.OutIf != "" { outIf = *x.OutIf }
-		if x.Comment != nil && *x.Comment != "" { comment = *x.Comment }
+		if x.InIf != nil && *x.InIf != "" {
+			inIf = *x.InIf
+		}
+		if x.OutIf != nil && *x.OutIf != "" {
+			outIf = *x.OutIf
+		}
+		if x.Comment != nil && *x.Comment != "" {
+			comment = *x.Comment
+		}
 		en := "-"
-		if x.Enabled { en = "✓" }
+		if x.Enabled {
+			en = "✓"
+		}
 		fmt.Printf("%-3d %-8s %-6s %-7s %-3s %-9s %-9s %-12s %-16s %-16s %-8s %-s\n",
 			x.ID, x.Chain, x.Proto, x.Action, en,
 			inIf, outIf,
@@ -457,17 +598,23 @@ func printDefaultsTable(def model.Defaults) {
 
 // helpers for pretty printers
 func intSlice(v []int) string {
-	if len(v) == 0 { return "[]" }
+	if len(v) == 0 {
+		return "[]"
+	}
 	var sb strings.Builder
 	sb.WriteByte('[')
 	for i, x := range v {
-		if i > 0 { sb.WriteByte(',') }
+		if i > 0 {
+			sb.WriteByte(',')
+		}
 		sb.WriteString(fmt.Sprint(x))
 	}
 	sb.WriteByte(']')
 	return sb.String()
 }
 func strSlice(v []string) string {
-	if len(v) == 0 { return "[]" }
+	if len(v) == 0 {
+		return "[]"
+	}
 	return "[" + strings.Join(v, ",") + "]"
 }

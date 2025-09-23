@@ -12,8 +12,8 @@ cd "$WORKDIR"
 
 # инициализируем go-модуль (если ещё не)
 if [ ! -f go.mod ]; then
-    echo "[*] go mod init example.com/netfence"
-    go mod init example.com/netfence
+    echo "[*] go mod init netfence"
+    go mod init netfence
 fi
 
 echo "[*] Подтягиваем зависимости"

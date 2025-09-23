@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"errors"
-	"example.com/netfence/internal/model"
-	"example.com/netfence/internal/repo"
+	"netfence/internal/model"
+	"netfence/internal/repo"
 	"strings"
 )
 

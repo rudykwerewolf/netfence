@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"example.com/netfence/internal/model"
-	"example.com/netfence/internal/render"
-	"example.com/netfence/internal/repo"
-	"example.com/netfence/internal/service"
-	"example.com/netfence/internal/util"
+	"netfence/internal/model"
+	"netfence/internal/render"
+	"netfence/internal/repo"
+	"netfence/internal/service"
+	"netfence/internal/util"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"

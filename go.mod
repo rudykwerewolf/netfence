@@ -1,4 +1,4 @@
-module example.com/netfence
+module netfence
 
 go 1.24.0
 

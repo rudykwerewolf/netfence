@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
-	"example.com/netfence/internal/model"
+	"netfence/internal/model"
 )
 
 type DefaultsRepo struct{ DB *sql.DB }
